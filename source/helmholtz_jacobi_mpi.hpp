@@ -119,7 +119,7 @@ inline void MPI_sync_rows_2(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldBy
 //   x_k+1 = D^{-1} (f - (A - D) x_k)
 //   x_k+1 = y + C x_k,
 //   y = D^{-1} * f, C = D^{-1} * (D - A)
-//   -> Ñonvergence condition: diagonal dominance
+//   -> Convergence condition: diagonal dominance
 //
 // Which in our case leads to following formula:
 //   y[i][j] = alpha^-1 * (y0[i-1][j] + y0[i+1][j] + y0[i][j-1] + y0[i][j+1] + beta * f[i][j])
@@ -136,16 +136,16 @@ inline void MPI_sync_rows_2(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldBy
 // Computation is divided evenly by rows, each rank iterates over 'rowsProcessedByRank = internalN / MPI_size',
 // which means it needs to hold 'rowsHeldByRank = rowsProcessedByRank + 2' rows in its memory
 //
-//   u u u u u u u u u u | rank 0
-//   l 0 0 0 0 0 0 0 0 r <
-//   l 0 0 0 0 0 0 0 0 r <      | rank 1
-//   l 0 0 0 0 0 0 0 0 r |      <
-//   l 0 0 0 0 0 0 0 0 r        <      | rank 2
-//   l 0 0 0 0 0 0 0 0 r        |      <
-//   l 0 0 0 0 0 0 0 0 r               <      | rank 3
-//   l 0 0 0 0 0 0 0 0 r               |      <
-//   l 0 0 0 0 0 0 0 0 r                      <
-//   b b b b b b b b b b                      |
+//   u u u u u u u u u u    | rank 0
+//   l 0 0 0 0 0 0 0 0 r    <
+//   l 0 0 0 0 0 0 0 0 r    <      | rank 1
+//   l 0 0 0 0 0 0 0 0 r    |      <
+//   l 0 0 0 0 0 0 0 0 r           <      | rank 2
+//   l 0 0 0 0 0 0 0 0 r           |      <
+//   l 0 0 0 0 0 0 0 0 r                  <      | rank 3
+//   l 0 0 0 0 0 0 0 0 r                  |      <
+//   l 0 0 0 0 0 0 0 0 r                         <
+//   b b b b b b b b b b                         |
 //
 // Every rank iterates over its rows and then sends its upper and lower processed rows to
 // ranks above and below, syncronizing the spots where held block intersect with values
