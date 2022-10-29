@@ -76,22 +76,57 @@ inline void MPI_sync_rows_2(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldBy
 
 // ### Helholtz equation ###
 //
-// -u_xx - u_yy + k^2 u(x, y) = f(x, y)
-// k - wave_number
-// f - right_part
+//   { -u_xx - u_yy + k^2 u(x, y) = f(x, y),   in square region [0,L]x[0,L]
+//   { u|_x=0 = boundary_left(y)
+//   { u|_x=L = boundary_right(y)
+//   { u|_y=0 = boundary_top(y)
+//   { u|_y=L = boundary_bottom(y)
+//   here
+//   k - wave_number
+//   f - right_part
 //
-// using
+// By taking a standard difference scheme aka 'cross' we get
+//   alpha * y[i][j] - y[i-1][j] - y[i+1][j] - y[i][j-1] - y[i][j+1] = beta * f[i][j]
+// where
+//   alpha = (4 + h^2 k^2)
+//   beta  = (h^2)
 //
-// ### Iterative Jacobi method for SLAE solution ###
+// On an even NxN grid:
 //
-// A * x = f, 
-// (L + U) * x_k + D * x_k+1 = f, 
-// L + U = A - D,
-// A = L + D + U, L - upper triangular, D - diagonal, U - lower triangular
-// x_k+1 = D^{-1} (f - (A - D) x_k)
-// x_k+1 = y + C x_k,
-// y = D^{-1} * f, C = D^{-1} * (D - A)
-// Ñonvergence condition: diagonal dominance
+//   u u u u u u u u u u
+//   l 0 0 # 0 0 0 0 0 r
+//   l 0 # # # 0 0 0 0 r  <- 'cross' difference scheme
+//   l 0 0 # 0 0 0 0 0 r
+//   l 0 0 0 0 0 0 0 0 r
+//   l 0 0 0 0 0 0 0 0 r
+//   l 0 0 0 0 0 0 0 0 r
+//   l 0 0 0 0 0 0 0 0 r
+//   l 0 0 0 0 0 0 0 0 r
+//   b b b b b b b b b b
+//
+// By iterating 'cross' over all internal points of a grid we get a SLAE of N^2 variables,
+// some of which are actually fixed due to boundaries being constant, this reduces SLAE size
+// down to (internalN)^2 where 'internalN = N-2'
+//
+// This SLAE can be solved with any iterative method, here we use:
+//
+// ### Iterative Jacobi method  ###
+//
+//   A * x = f, 
+//   (L + U) * x_k + D * x_k+1 = f, 
+//   L + U = A - D,
+//   A = L + D + U, L - upper triangular, D - diagonal, U - lower triangular
+//   x_k+1 = D^{-1} (f - (A - D) x_k)
+//   x_k+1 = y + C x_k,
+//   y = D^{-1} * f, C = D^{-1} * (D - A)
+//   -> Ñonvergence condition: diagonal dominance
+//
+// Which in our case leads to following formula:
+//   y[i][j] = alpha^-1 * (y0[i-1][j] + y0[i+1][j] + y0[i][j-1] + y0[i][j+1] + beta * f[i][j])
+// where 'y0' is solution at the previous iteration
+//
+// This formula is iterated over all internal points of a grid to get a new 'y', effectively
+// implementing Jacobi method without explicitly writing down SLAE matrix
 //
 // ### MPI parallelization ###
 //

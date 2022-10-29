@@ -26,6 +26,9 @@ Adjust grid size N, area size L, wave number k, precision and boundary condition
 
 ## Version history
 
+* 00.02
+    * Included full method description in comments
+
 * 00.01
     * Implemented parallel Jacobi method with MPI (stop condition is serial for now)
     * Implemented parallel calculation of relative error
