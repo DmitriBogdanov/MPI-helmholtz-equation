@@ -231,6 +231,8 @@ inline UniquePtrArray helholtz_jacobi(T k, std::function<T(T, T)> f, T L, size_t
 					x0_ptr[indexIJ - 1] + // left
 					x0_ptr[indexIJ + 1] + // right
 					beta * f(gridX, gridY)
+						// NOTE: tabulating f(x,y) beforehand improves performance, but increases
+						// memory consumption which is often the limiting factor for this method
 					);
 			}
 		}
