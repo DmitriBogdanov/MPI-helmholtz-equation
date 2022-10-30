@@ -1,13 +1,12 @@
 ﻿#include <iostream>
 #include <iomanip>
 
-#include "static_timer.hpp"
+#include "helmholtz_jacobi_serial.hpp"
 #include "helmholtz_jacobi_mpi.hpp"
+#include "static_timer.hpp"
 #include "table.hpp"
 
 #include <mpi.h>
-
-#define SEQUENTIAL_MODE 1
 
 
 // # Config #
@@ -16,7 +15,6 @@ const T L = 1;
 
 // Grid size
 const size_t N = 6002;
-const size_t pointCount = sqr(N);
 
 // Wave number
 const T c1 = 10;
@@ -36,31 +34,27 @@ T zero_boundary(T value) { return 0; }
 // Precise solution (for analythical purposes)
 T analythical_solution(T x, T y) { return (1 - x) * x * sin(PI * y); }
 
-UniquePtrArray get_exact_solution() {
-	auto sol_exact = make_raw_array(pointCount);
 
-	T h = T(1) / (N - 1);
+// Solution verification
+T get_relative_error_serial(T* const sol_numeric) {
+	T L2_norm_of_difference(0);
+	T L2_norm_of_exact_sol(0);
 
-	for (size_t i = 0; i < N; ++i)
-		for (size_t j = 0; j < N; ++j)
-			sol_exact[i * N + j] = analythical_solution(j * h, i * h);
+	for (int i = 1; i < N - 1; ++i) {
+		for (int j = 0; j < N; ++j) {
+			const int indexIJ = i * N + j;
 
-	return sol_exact;
+			const T precise_value = analythical_solution(j * h, i * h);
+
+			L2_norm_of_difference += sqr(sol_numeric[indexIJ] - precise_value);
+			L2_norm_of_exact_sol += sqr(precise_value);
+		}
+	}
+
+	return sqrt(L2_norm_of_difference / L2_norm_of_exact_sol);
 }
 
-//T get_relative_error_L2(T* const sol_numeric, T* const sol_exact) {
-//	T L2_norm_of_difference(0);
-//	T L2_norm_of_exact_sol(0);
-//
-//	for (size_t i = 0; i < pointCount; ++i) {
-//		L2_norm_of_difference += sqr(sol_numeric[i] - sol_exact[i]);
-//		L2_norm_of_exact_sol += sqr(sol_exact[i]);
-//	}
-//
-//	return sqrt(L2_norm_of_difference / L2_norm_of_exact_sol);
-//}
-
-T get_relative_error_L2(T* const sol_numeric, int MPI_rank, int MPI_size) {
+T get_relative_error_mpi(T* const sol_numeric, int MPI_rank, int MPI_size) {
 	const int internalN = N - 2;
 
 	const int rowsProcessedByRank = internalN / MPI_size;
@@ -78,34 +72,26 @@ T get_relative_error_L2(T* const sol_numeric, int MPI_rank, int MPI_size) {
 			const T gridX = j * h;
 			const T gridY = (MPI_rank * rowsProcessedByRank + i) * h; // gotta account for current block position
 
-			norms[0] += sqr(sol_numeric[indexIJ] - analythical_solution(gridX, gridY));
-			norms[1] += sqr(analythical_solution(gridX, gridY));
+			const T precise_value = analythical_solution(gridX, gridY);
+
+			norms[0] += sqr(sol_numeric[indexIJ] - precise_value);
+			norms[1] += sqr(precise_value);
 		}
 	}
-
-	RANKPRINT << "norms = {" << norms[0] << ", " << norms[1] << "}" << std::endl;
 
 	// Collect all ||x - x_numeric|| and ||x|| norms on master and add them together
 	if (MPI_rank == 0) {
 		T temp[2];
 
 		for (int rank = 1; rank < MPI_size; ++rank) {
-			RANKPRINT << "awaiting norm from " << rank << std::endl;
-
 			MPI_Recv(temp, 2, MPI_T, rank, 0, MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
-
-			RANKPRINT << "received norm from " << rank << std::endl;
 
 			norms[0] += temp[0];
 			norms[1] += temp[1];
 		}
-
-		RANKPRINT << "coolected norms = {" << norms[0] << ", " << norms[1] << "}" << std::endl;
 	}
 	else {
 		MPI_Send(norms, 2, MPI_T, MASTER_PROCESS, 0, MPI_COMM_WORLD);
-
-		RANKPRINT << "sent norms" << std::endl;
 	}
 
 	// Relative error  ||x - x_numeric|| / ||x||
@@ -133,45 +119,94 @@ int main(int argc, char** argv) {
 	int MPI_size;
 	MPI_Comm_size(MPI_COMM_WORLD, &MPI_size);
 
-	outstream << "Rank " << MPI_rank << "/" << MPI_size << " initialized\n";
+	outstream << "Rank " << MPI_rank << "/" << MPI_size << " initialized\n" << std::flush;
 
-	// Sync
-	{
-		auto solution = helholtz_jacobi(
+	// Draw a table
+	MPI_Barrier(MPI_COMM_WORLD);
+	if (MPI_rank == 0) {
+		std::cout
+			<< "\n"
+			<< "N = " << N << "\n"
+			<< "k^2 h^2 = " << c1 << "\n"
+			<< "precision = " << precision << "\n\n" << std::flush;
+
+		table_add_1("Method");
+		table_add_2("Time (sec)");
+		table_add_3("Rel. Error");
+		table_add_4("Speedup");
+		table_hline();
+	}
+
+	double jacobiSerialTime = -1;
+	double jacobiParallelTime = -1;
+	///double seidelSerialTime = -1;
+	///double seidelParallelTime = -1;
+
+	// 1) Serial Jacobi (MPI communication type 1)
+	if (MPI_rank == 0) {
+		// 1. Method
+		table_add_1("Jacobi");
+
+		// 2. Time
+		StaticTimer::start();
+		auto solution = helholtz_jacobi_serial(
+			k, right_part, L, N, precision,
+			zero_boundary, zero_boundary, zero_boundary, zero_boundary
+		);
+		jacobiSerialTime = StaticTimer::end();
+
+		table_add_2(jacobiSerialTime);
+
+		// 3. Err
+		table_add_3(get_relative_error_serial(solution.get()));
+
+		// 4. Speedup
+		table_add_4(jacobiSerialTime / jacobiSerialTime);
+	}
+
+	// 2) Parallel Jacobi
+	MPI_Barrier(MPI_COMM_WORLD);
+	for (int MPI_communication_type = 1; MPI_communication_type <= 3; ++MPI_communication_type) {
+		if (MPI_rank == 0) {
+			// 1. Method
+			table_add_1("MPI Jacobi (type " + std::to_string(MPI_communication_type) + ")");
+
+			// 2. Time
+			StaticTimer::start();
+		}
+		
+		MPI_Barrier(MPI_COMM_WORLD);
+		auto solution = helholtz_jacobi_mpi(
 			k, right_part, L, N, precision,
 			zero_boundary, zero_boundary, zero_boundary, zero_boundary,
-			MPI_rank, MPI_size, 1
+			MPI_rank, MPI_size, MPI_communication_type
 		);
-
-		auto error = get_relative_error_L2(solution.get(), MPI_rank, MPI_size);
+		MPI_Barrier(MPI_COMM_WORLD);
 
 		if (MPI_rank == 0) {
-			std::cout << "Relative error = " << error << std::endl;
+			jacobiParallelTime = StaticTimer::end();
+
+			table_add_2(jacobiParallelTime);
 		}
+
+		auto error = get_relative_error_mpi(solution.get(), MPI_rank, MPI_size);
+
+		if (MPI_rank == 0) {
+			// 3. Err
+			table_add_3(error);
+
+			// 4. Speedup
+			table_add_4(jacobiSerialTime / jacobiParallelTime);
+		}	
 	}
 
-	/*if (MPI_rank > 0) {
-		_sleep(1'000);
-		int temp = 0;
 
-		MPI_Recv(&temp, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &MPI_status);
-
-		outstream << "Rank " << MPI_rank << "/" << MPI_size << " synced" << std::endl;
-	}
-	else {
-		_sleep(1'000);
-		for (int rank = 1; rank < MPI_size; ++rank)
-			MPI_Send(&TRUE, 1, MPI_INT, rank, 0, MPI_COMM_WORLD);
-
-		outstream << "Rank " << MPI_rank << "/" << MPI_size << " synced" << std::endl;
-		_sleep(2'000);
-	}*/
-
-	/// TEMPs
-	//_sleep(1000);
 	
 	// Finalize MPI environment
-	outstream << "Rank " << MPI_rank << " finalized\n";
+	if (MPI_rank == 0) std::cout << '\n' << std::flush;
+	MPI_Barrier(MPI_COMM_WORLD);
+	outstream << "Rank " << MPI_rank << " finalized\n" << std::flush;
+
 	MPI_Finalize();
 }
 

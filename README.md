@@ -26,6 +26,13 @@ Adjust grid size N, area size L, wave number k, precision and boundary condition
 
 ## Version history
 
+* 00.03
+    * Added serial Jacobi implementation
+    * Added multiple types of MPI communication, that can be toggled as a module inside the method
+    * Added proper output in form of a table
+    * Parallelized Jacobi stop condition
+    * Finalized Jacobi implementation and got proper speedup from parallelization
+
 * 00.02
     * Included full method description in comments
 
