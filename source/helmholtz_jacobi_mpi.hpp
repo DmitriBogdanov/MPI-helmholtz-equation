@@ -8,8 +8,6 @@
 #define MPI_T MPI_DOUBLE
 #define MASTER_PROCESS 0
 
-///#define RANKPRINT outstream << "[" << MPI_rank << "/" << MPI_size << "]: " /// TEMP
-
 
 // MPI Communication types
 inline void MPI_sync_rows_1(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldByProcess, int N) {
@@ -79,34 +77,34 @@ inline void MPI_sync_rows_3(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldBy
 	const auto rowUpper = rowTop + N;
 	const auto rowLower = rowBot - N;
 
-	MPI_Request request1, request2, request3, request4;
-	int complete1, complete2, complete3, complete4;
+	MPI_Request REQUEST_DISCARD; // here we put requests and completion bools that are to be discarded
+	int COMPLETION_DISCARD = 0;  // (MPI does not have in-built discard option for these)
+
+	MPI_Request request_send_below;
+	MPI_Request request_send_above;
 
 	// MPI_Recv() 1  upper row from the process {MPI_rank - 1}
 	if (MPI_rank > 0) MPI_Irecv(
-		rowTop, N, MPI_T, MPI_rank - 1, 0, MPI_COMM_WORLD, &request1
+		rowTop, N, MPI_T, MPI_rank - 1, 0, MPI_COMM_WORLD, &REQUEST_DISCARD
 	);
 
 	// MPI_Send() 1 bottom row to the process {MPI_rank + 1}
 	if (MPI_rank < MPI_size - 1) MPI_Isend(
-		rowLower, N, MPI_T, MPI_rank + 1, 0, MPI_COMM_WORLD, &request2
+		rowLower, N, MPI_T, MPI_rank + 1, 0, MPI_COMM_WORLD, &request_send_below
 	);
 
 	// MPI_Recv() 1 bottom row from the process{ MPI_rank + 1 }
 	if (MPI_rank < MPI_size - 1) MPI_Irecv(
-		rowBot, N, MPI_T, MPI_rank + 1, 0, MPI_COMM_WORLD, &request3
+		rowBot, N, MPI_T, MPI_rank + 1, 0, MPI_COMM_WORLD, &REQUEST_DISCARD
 	);
 
 	// MPI_Send() 1  upper row to the process {MPI_rank - 1}
 	if (MPI_rank > 0) MPI_Isend(
-		rowUpper, N, MPI_T, MPI_rank - 1, 0, MPI_COMM_WORLD, &request4
+		rowUpper, N, MPI_T, MPI_rank - 1, 0, MPI_COMM_WORLD, &request_send_above
 	);
 
-	if (MPI_rank < MPI_size - 1) MPI_Test(&request2, &complete2, MPI_STATUSES_IGNORE);
-	if (MPI_rank > 0) MPI_Test(&request4, &complete4, MPI_STATUSES_IGNORE);
-
-	/*if (MPI_rank < MPI_size - 1) MPI_Wait(&request2, MPI_STATUSES_IGNORE);
-	if (MPI_rank > 0) MPI_Wait(&request4, MPI_STATUSES_IGNORE);*/
+	if (MPI_rank < MPI_size - 1) MPI_Test(&request_send_below, &COMPLETION_DISCARD, MPI_STATUSES_IGNORE);
+	if (MPI_rank > 0) MPI_Test(&request_send_above, &COMPLETION_DISCARD, MPI_STATUSES_IGNORE);
 }
 
 
