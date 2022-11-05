@@ -1,4 +1,5 @@
-# MPI Helmholtz Equation
+![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+#MPI Helmholtz Equation
 
 Contains serial and parallel (MPI) implementations of following algorithms:
 
@@ -10,7 +11,7 @@ Note that present implementations are intended for academic purposes, as such th
 ## Compilation
 
 * Recommended compiler: Intel C++ Compiler
-* Requires C++17 support ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+* Requires C++17 support 
 * Requires MPI implementation
 
 ## Usage
