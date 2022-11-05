@@ -10,7 +10,7 @@ Note that present implementations are intended for academic purposes, as such th
 ## Compilation
 
 * Recommended compiler: Intel C++ Compiler
-* Requires C++17 support
+* Requires C++17 support ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 * Requires MPI implementation
 
 ## Usage
