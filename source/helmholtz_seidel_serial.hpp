@@ -38,33 +38,22 @@
 //
 // This SLAE can be solved with any iterative method, here we use:
 //
-// ### Iterative Jacobi method  ###
+// ### Iterative Seidel method  ###
+// "Red - black" iterations is implemented. This kind of Seidel method leads it
+// to two iterations of Jacobi method. 
+// On an even NxN grid:
 //
-//   A * x = f, 
-//   (L + U) * x_k + D * x_k+1 = f, 
-//   L + U = A - D,
-//   A = L + D + U, L - upper triangular, D - diagonal, U - lower triangular
-//   x_k+1 = D^{-1} (f - (A - D) x_k)
-//   x_k+1 = y + C x_k,
-//   y = D^{-1} * f, C = D^{-1} * (D - A)
-//   -> Convergence condition: diagonal dominance
-//
-// Which in our case leads to following formula:
-//   y[i][j] = alpha^-1 * (y0[i-1][j] + y0[i+1][j] + y0[i][j-1] + y0[i][j+1] + beta * f[i][j])
-// where 'y0' is solution at the previous iteration
-//
-// This formula is iterated over all internal points of a grid to get a new 'y', effectively
-// implementing Jacobi method without explicitly writing down SLAE matrix
-//
-// NOTE: Swapping pointers to 'y' and 'y0' each iterations allows us to avoid copying 'y'
-//       into 'y0', which would be the naive way to implement 'y0 = y'
-//
-// NOTE: With matrix-like (i, j) indexation, 'i' corresponds to Y-axis, while 'j' corresponds to X-axis
-//
-// NOTE: Tabulating right part f(x,y) beforehand improves performance, but increases
-//       memory consumption, which is often the limiting factor for this method
-//
-UniquePtrArray helholtz_jacobi_serial(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
+//   u u u u u u u u u u
+//   l R B R B R B R B r
+//   l B R B R B R B R r  <- "Red - black" indexation scheme
+//   l R B R B R B R B r  <- R - Red   - the first  step of Seidel method (one Jacobi iteration)
+//   l B R B R B R B R r  <- B - Black - the second step of Seidel method (one Jacobi iteration)
+//   l R B R B R B R B r
+//   l B R B R B R B R r
+//   l R B R B R B R B r
+//   l B R B R B R B R r
+//   b b b b b b b b b b
+UniquePtrArray helholtz_seidel_serial(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
 	std::function<T(T)> boundary_left, std::function<T(T)> boundary_right,
 	std::function<T(T)> boundary_bot, std::function<T(T)> boundary_top
 ) {
@@ -74,6 +63,7 @@ UniquePtrArray helholtz_jacobi_serial(T k, std::function<T(T, T)> f, T L, size_t
 	const T inverseAlpha = T(1) / alpha;
 	const T beta = sqr(h);
 
+	const int internalN = N - 2;
 	const int num_var = sqr(N);
 
 	auto x = make_raw_array(num_var, 0); // initial guess in zero-vector
@@ -84,41 +74,34 @@ UniquePtrArray helholtz_jacobi_serial(T k, std::function<T(T, T)> f, T L, size_t
 
 	// Tabulate boundaries
 	// Left
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int i = 0; i < N; ++i) {
 		x_ptr[i * N + 0] = boundary_left(i * h);
 		x0_ptr[i * N + 0] = boundary_left(i * h);
 	}
 	// Right
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int i = 0; i < N; ++i) {
 		x_ptr[i * N + N - 1] = boundary_right(i * h);
 		x0_ptr[i * N + N - 1] = boundary_right(i * h);
 	}
 	// Top
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int j = 1; j < N - 1; ++j) {
 		x_ptr[0 * N + j] = boundary_top(j * h);
 		x0_ptr[0 * N + j] = boundary_top(j * h);
 	}
-	// Bottom 
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
+	// Bottom
 	for (int j = 1; j < N - 1; ++j) {
 		x_ptr[(N - 1) * N + j] = boundary_bot(j * h);
 		x0_ptr[(N - 1) * N + j] = boundary_bot(j * h);
 	}
 
 	T norm_diff_2 = 0;
-
-	// Jacobi method
+	// Seidel method
 	do {
-
 		// x0 = x
 		std::swap(x_ptr, x0_ptr);
-
-		// Internal loop
 		for (int i = 1; i < N - 1; ++i) {
-			for (int j = 1; j < N - 1; ++j) {
+			//#pragma omp parallel for 
+			for (int j = 1; j < N - 1; ++j) if ((i + j) % 2) {
 				const int indexIJ = i * N + j;
 
 				x_ptr[indexIJ] = inverseAlpha * (
@@ -126,6 +109,21 @@ UniquePtrArray helholtz_jacobi_serial(T k, std::function<T(T, T)> f, T L, size_t
 					x0_ptr[indexIJ + N] + // down
 					x0_ptr[indexIJ - 1] + // left
 					x0_ptr[indexIJ + 1] + // right
+					beta * f(j * h, i * h)
+					);
+			}
+		}
+
+		for (int i = 1; i < N - 1; ++i) {
+			//#pragma omp parallel for 
+			for (int j = 1; j < N - 1; ++j) if ((i + j + 1) % 2) {
+				const int indexIJ = i * N + j;
+
+				x_ptr[indexIJ] = inverseAlpha * (
+					x_ptr[indexIJ - N] + // up
+					x_ptr[indexIJ + N] + // down
+					x_ptr[indexIJ - 1] + // left
+					x_ptr[indexIJ + 1] + // right
 					beta * f(j * h, i * h)
 					);
 			}

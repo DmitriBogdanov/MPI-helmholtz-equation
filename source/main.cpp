@@ -3,6 +3,8 @@
 
 #include "helmholtz_jacobi_serial.hpp"
 #include "helmholtz_jacobi_mpi.hpp"
+#include "helmholtz_seidel_serial.hpp"
+#include "helmholtz_seidel_mpi.hpp"
 #include "static_timer.hpp"
 #include "table.hpp"
 
@@ -14,7 +16,7 @@
 const T L = 1;
 
 // Grid size
-const size_t N = 6002;
+const size_t N = 4002;
 
 // Wave number
 const T c1 = 10;
@@ -139,8 +141,8 @@ int main(int argc, char** argv) {
 
 	double jacobiSerialTime = -1;
 	double jacobiParallelTime = -1;
-	///double seidelSerialTime = -1;
-	///double seidelParallelTime = -1;
+	double seidelSerialTime = -1;
+	double seidelParallelTime = -1;
 
 	// 1) Serial Jacobi (MPI communication type 1)
 	if (MPI_rank == 0) {
@@ -200,7 +202,63 @@ int main(int argc, char** argv) {
 		}	
 	}
 
+	// 3) Serial Seidel (MPI communication type 1)
+	if (MPI_rank == 0) {
+		// 1. Method
+		table_add_1("Seidel");
 
+		// 2. Time
+		StaticTimer::start();
+		auto solution = helholtz_seidel_serial(
+			k, right_part, L, N, precision,
+			zero_boundary, zero_boundary, zero_boundary, zero_boundary
+		);
+		seidelSerialTime = StaticTimer::end();
+
+		table_add_2(seidelSerialTime);
+
+		// 3. Err
+		table_add_3(get_relative_error_serial(solution.get()));
+
+		// 4. Speedup
+		table_add_4(seidelSerialTime / seidelSerialTime);
+	}
+
+	// 2) Parallel Seidel
+	MPI_Barrier(MPI_COMM_WORLD);
+	for (int MPI_communication_type = 1; MPI_communication_type <= 3; ++MPI_communication_type) {
+		if (MPI_rank == 0) {
+			// 1. Method
+			table_add_1("MPI Seidel (type " + std::to_string(MPI_communication_type) + ")");
+
+			// 2. Time
+			StaticTimer::start();
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		auto solution = helholtz_seidel_mpi(
+			k, right_part, L, N, precision,
+			zero_boundary, zero_boundary, zero_boundary, zero_boundary,
+			MPI_rank, MPI_size, MPI_communication_type
+		);
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		if (MPI_rank == 0) {
+			seidelParallelTime = StaticTimer::end();
+
+			table_add_2(seidelParallelTime);
+		}
+
+		auto error = get_relative_error_mpi(solution.get(), MPI_rank, MPI_size);
+
+		if (MPI_rank == 0) {
+			// 3. Err
+			table_add_3(error);
+
+			// 4. Speedup
+			table_add_4(seidelSerialTime / seidelParallelTime);
+		}
+	}
 	
 	// Finalize MPI environment
 	if (MPI_rank == 0) std::cout << '\n' << std::flush;

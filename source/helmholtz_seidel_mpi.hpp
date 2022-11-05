@@ -4,7 +4,7 @@
 
 // ### Helholtz equation ###
 //
-// >>> For full method description and notes check serial version in "helmholt_jacobi_serial.hpp"
+// >>> For full method description and notes check serial version in "helmholt_seidel_serial.hpp"
 //
 // ### MPI parallelization ###
 //
@@ -40,7 +40,7 @@
 //       2) MPI_Sendrecv()
 //       3) MPI_Isend() + MPI_Irecv()
 //
-inline UniquePtrArray helholtz_jacobi_mpi(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
+inline UniquePtrArray helholtz_seidel_mpi(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
 	std::function<T(T)> boundary_left, std::function<T(T)> boundary_right,
 	std::function<T(T)> boundary_bot, std::function<T(T)> boundary_top,
 	int MPI_rank, int MPI_size, int MPI_comminication_type
@@ -88,18 +88,16 @@ inline UniquePtrArray helholtz_jacobi_mpi(T k, std::function<T(T, T)> f, T L, si
 	T local_norm_sum = 0;
 	int escape_flag = 0; // MPI doesn't know bools exist
 
-	// Jacobi method
+	// Seidel method
 	do {
 		// x0 = x
 		std::swap(x_ptr, x0_ptr);
-
-		// Internal loop
 		for (int i = 1; i < rows_held_by_rank - 1; ++i) {
-			for (int j = 1; j < N - 1; ++j) {
+			for (int j = 1 + i % 2; j < N - 1; j += 2) {
 				const int indexIJ = i * N + j;
 
 				const T gridX = j * h;
-				const T gridY = (MPI_rank * rows_processed_by_rank + i) * h; // gotta account for current block position
+				const T gridY = (MPI_rank * rows_processed_by_rank + i) * h; 
 
 				x_ptr[indexIJ] = inverseAlpha * (
 					x0_ptr[indexIJ - N] + // up
@@ -107,12 +105,9 @@ inline UniquePtrArray helholtz_jacobi_mpi(T k, std::function<T(T, T)> f, T L, si
 					x0_ptr[indexIJ - 1] + // left
 					x0_ptr[indexIJ + 1] + // right
 					beta * f(gridX, gridY)
-						// NOTE: tabulating f(x,y) beforehand improves performance, but increases
-						// memory consumption which is often the limiting factor for this method
 					);
 			}
 		}
-
 
 		// Syncronize state
 		switch (MPI_comminication_type) {
@@ -126,10 +121,41 @@ inline UniquePtrArray helholtz_jacobi_mpi(T k, std::function<T(T, T)> f, T L, si
 			MPI_sync_rows_3(x_ptr, MPI_rank, MPI_size, rows_held_by_rank, N);
 			break;
 		default:
-			exit_with_error("Unknown 'MPI_comminication_type' in Jacobi method");
+			exit_with_error("Unknown 'MPI_comminication_type' in Seidel method");
 		}
 
-	
+		for (int i = 1; i < rows_held_by_rank - 1; ++i) {
+			for (int j = 1 + (i + 1) % 2; j < N - 1; j += 2) {
+				const int indexIJ = i * N + j;
+
+				const T gridX = j * h;
+				const T gridY = (MPI_rank * rows_processed_by_rank + i) * h; 
+
+				x_ptr[indexIJ] = inverseAlpha * (
+					x_ptr[indexIJ - N] + // up
+					x_ptr[indexIJ + N] + // down
+					x_ptr[indexIJ - 1] + // left
+					x_ptr[indexIJ + 1] + // right
+					beta * f(gridX, gridY)
+					);
+			}
+		}
+
+		// Syncronize state
+		switch (MPI_comminication_type) {
+		case 1:
+			MPI_sync_rows_1(x_ptr, MPI_rank, MPI_size, rows_held_by_rank, N);
+			break;
+		case 2:
+			MPI_sync_rows_2(x_ptr, MPI_rank, MPI_size, rows_held_by_rank, N);
+			break;
+		case 3:
+			MPI_sync_rows_3(x_ptr, MPI_rank, MPI_size, rows_held_by_rank, N);
+			break;
+		default:
+			exit_with_error("Unknown 'MPI_comminication_type' in Seidel method");
+		}
+
 		// Compute partial sum of ||x - x0||
 		local_norm_sum = 0;
 		for (int i = N; i < (rows_held_by_rank - 1) * N; ++i) local_norm_sum += sqr(x_ptr[i] - x0_ptr[i]);
