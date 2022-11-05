@@ -16,13 +16,13 @@ Note that present implementations are intended for academic purposes, as such th
 ## Usage
 
 Helmholtz equation:<br>
--u_xx - u_yy + k^2 u(x, y) = f(x, y)<br>
+$$-u_xx - u_yy + k^2 u(x, y) = f(x, y),$$<br>
 where<br>
-k - wave_number<br>
-f - right_part<br>
-defined on a 2D region [0, L]x[0, L] with 4 fist-type boundary conditions
+$k$ - wave_number,<br>
+$f$ - right_part,<br>
+defined on a 2D region $[0, L]\times[0, L]$ with $4$ fist-type boundary conditions
 
-Adjust grid size N, area size L, wave number k, precision and boundary conditions in "main.cpp" to configure testing parameters. Parallel implementations assume (N - 2) to be a multiple of MPI_Comm_size().
+Adjust grid size $N$, area size $L$, wave number $k$, precision and boundary conditions in "main.cpp" to configure testing parameters. Parallel implementations assume $(N - 2)$ to be a multiple of MPI_Comm_size().
 
 ## Version history
 
