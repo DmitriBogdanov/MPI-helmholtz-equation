@@ -1,4 +1,4 @@
-![C++](https://img.shields.io/badge/C++- standart 17-blue.svg?style=flat&logo=cplusplus) <br>
+![C++](https://img.shields.io/badge/C++- std=17-blue.svg?style=flat&logo=cplusplus) <br>
 # MPI Helmholtz Equation
 
 Contains serial and parallel (MPI) implementations of following algorithms:
