@@ -105,12 +105,12 @@ inline void MPI_sync_rows_3(T *x_ptr, int MPI_rank, int MPI_size, int rowsHeldBy
 	{
 		MPI_Test(&request_send_below, &COMPLETION_DISCARD, MPI_STATUSES_IGNORE);
 		//MPI_Waitall(MPI_size, &request_send_below, MPI_STATUSES_IGNORE);
-		MPI_Wait(&request_send_below, MPI_STATUSES_IGNORE);
+		///MPI_Wait(&request_send_below, MPI_STATUSES_IGNORE);
 	};
 	if (MPI_rank > 0)
 	{
 		MPI_Test(&request_send_above, &COMPLETION_DISCARD, MPI_STATUSES_IGNORE);
 		//MPI_Waitall(MPI_size, &request_send_above, MPI_STATUSES_IGNORE);
-		MPI_Wait(&request_send_above, MPI_STATUSES_IGNORE);
+		///MPI_Wait(&request_send_above, MPI_STATUSES_IGNORE);
 	};
 }

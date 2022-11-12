@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
 		table_add_3(get_relative_error_serial(solution.get()));
 
 		// 4. Speedup
-		table_add_4(seidelSerialTime / seidelSerialTime);
+		table_add_4(jacobiSerialTime / seidelSerialTime);
 	}
 
 	// 2) Parallel Seidel

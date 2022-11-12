@@ -119,6 +119,7 @@ inline UniquePtrArray helholtz_seidel_mpi(T k, std::function<T(T, T)> f, T L, si
 			break;
 		case 3:
 			MPI_sync_rows_3(x_ptr, MPI_rank, MPI_size, rows_held_by_rank, N);
+			MPI_Barrier(MPI_COMM_WORLD);
 			break;
 		default:
 			exit_with_error("Unknown 'MPI_comminication_type' in Seidel method");
