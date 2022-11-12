@@ -8,15 +8,14 @@
 #include "static_timer.hpp"
 #include "table.hpp"
 
-#include <mpi.h>
-
 
 // # Config #
 // Area size
 const T L = 1;
 
 // Grid size
-const size_t N = 4002;
+const size_t N = 8002;
+const size_t internalN = N - 2;
 
 // Wave number
 const T c1 = 10;
@@ -130,8 +129,13 @@ int main(int argc, char** argv) {
 			<< "\n"
 			<< "N = " << N << "\n"
 			<< "k^2 h^2 = " << c1 << "\n"
-			<< "precision = " << precision << "\n\n" << std::flush;
+			<< "precision = " << precision << "\n\n"
+			<< std::flush;
+	}
 
+	if (internalN % MPI_size != 0) exit_with_error("intenalN is not divisible by MPI_size");
+
+	if (MPI_rank == 0) {
 		table_add_1("Method");
 		table_add_2("Time (sec)");
 		table_add_3("Rel. Error");
@@ -139,9 +143,9 @@ int main(int argc, char** argv) {
 		table_hline();
 	}
 
-	double jacobiSerialTime = -1;
+	double jacobiSerialTime   = -1;
 	double jacobiParallelTime = -1;
-	double seidelSerialTime = -1;
+	double seidelSerialTime   = -1;
 	double seidelParallelTime = -1;
 
 	// 1) Serial Jacobi (MPI communication type 1)

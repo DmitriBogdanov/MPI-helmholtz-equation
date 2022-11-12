@@ -5,43 +5,46 @@
 #include <string>
 
 
-constexpr std::streamsize COL_SIZE_1 = 20;
+const std::streamsize COL_SIZE_1 = 20;
 
 template<typename Object>
 void table_add_1(const Object &obj) {
 	std::cout
 		<< " | "
-		<< std::setw(COL_SIZE_1) << obj
+		<< std::setw(COL_SIZE_1) << std::fixed << obj
 		<< " | " << std::flush;
 }
 
 
-constexpr std::streamsize COL_SIZE_2 = 12;
+const std::streamsize COL_SIZE_2 = 10;
+const std::streamsize COL_2_PRECISION = 2;
 
 template<typename Object>
 void table_add_2(const Object &obj) {
 	std::cout
-		<< std::setw(COL_SIZE_2) << obj
+		<< std::setw(COL_SIZE_2) << std::fixed << std::setprecision(COL_2_PRECISION) << obj
 		<< " | " << std::flush;
 }
 
 
-constexpr std::streamsize COL_SIZE_3 = 12;
+const std::streamsize COL_SIZE_3 = 12;
+const std::streamsize COL_3_PRECISION = 4;
 
 template<typename Object>
 void table_add_3(const Object &obj) {
 	std::cout
-		<< std::setw(COL_SIZE_3) << obj
+		<< std::setw(COL_SIZE_3) << std::scientific << std::setprecision(COL_3_PRECISION) << obj
 		<< " | " << std::flush;
 }
 
 
-constexpr std::streamsize COL_SIZE_4 = 12;
+const std::streamsize COL_SIZE_4 = 7;
+const std::streamsize COL_4_PRECISION = 2;
 
 template<typename Object>
 void table_add_4(const Object &obj) {
 	std::cout
-		<< std::setw(COL_SIZE_4) << obj
+		<< std::setw(COL_SIZE_4) << std::fixed << std::setprecision(COL_4_PRECISION) << obj
 		<< " |\n" << std::flush;
 }
 

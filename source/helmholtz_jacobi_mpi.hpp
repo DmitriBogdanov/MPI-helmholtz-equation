@@ -40,6 +40,41 @@
 //       2) MPI_Sendrecv()
 //       3) MPI_Isend() + MPI_Irecv()
 //
+// # Row syncronisation scheme #
+// 
+// Example for (MPI_size == 4):
+//
+//   send 0 bytes to {last}          recv 0 bytes from {last}
+//   |                               |
+//    <---  l 0 0 0 0 0 0 0 0 r  <---
+//          l 0 0 0 0 0 0 0 0 r
+//          ...................          RANK 0 / 4
+//          l 0 0 0 0 0 0 0 0 r  --->
+//    --->  l 0 0 0 0 0 0 0 0 r      |
+//   |                               |
+//   |                               |
+//   |      l 0 0 0 0 0 0 0 0 r  <---
+//    <---  l 0 0 0 0 0 0 0 0 r
+//          ...................          RANK 1 / 4
+//          l 0 0 0 0 0 0 0 0 r  --->
+//    --->  l 0 0 0 0 0 0 0 0 r      |
+//   |                               |
+//   |                               |
+//   |      l 0 0 0 0 0 0 0 0 r  <---
+//    <---  l 0 0 0 0 0 0 0 0 r
+//          ...................          RANK 2 / 4
+//          l 0 0 0 0 0 0 0 0 r
+//    --->  l 0 0 0 0 0 0 0 0 r  --->
+//   |                               |
+//   |                               |
+//   |      l 0 0 0 0 0 0 0 0 r  <---
+//    <---  l 0 0 0 0 0 0 0 0 r
+//          ...................          RANK 3 / 4
+//          l 0 0 0 0 0 0 0 0 r
+//    --->  l 0 0 0 0 0 0 0 0 r  <---
+//   |                               |
+//   recv 0 bytes from {first}       send 0 bytes to {first}
+//
 inline UniquePtrArray helholtz_jacobi_mpi(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
 	std::function<T(T)> boundary_left, std::function<T(T)> boundary_right,
 	std::function<T(T)> boundary_bot, std::function<T(T)> boundary_top,

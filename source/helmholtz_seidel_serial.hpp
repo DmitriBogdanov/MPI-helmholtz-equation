@@ -63,7 +63,6 @@ UniquePtrArray helholtz_seidel_serial(T k, std::function<T(T, T)> f, T L, size_t
 	const T inverseAlpha = T(1) / alpha;
 	const T beta = sqr(h);
 
-	const int internalN = N - 2;
 	const int num_var = sqr(N);
 
 	auto x = make_raw_array(num_var, 0); // initial guess in zero-vector

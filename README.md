@@ -27,6 +27,15 @@ Adjust grid size $N$, area size $L$, wave number $k$, precision and boundary con
 
 ## Version history
 
+* 01.00
+    * Changed table formatting
+    * Added more error messages and safeguards
+    * Changed type 1 and 2 MPI communications to guarantee downwards-upwards waves of data transfer
+
+* 00.04
+    * Added serial Seidel implementation
+    * Implemented parallel Seidel nethod
+
 * 00.03
     * Added serial Jacobi implementation
     * Added multiple types of MPI communication, that can be toggled as a module inside the method

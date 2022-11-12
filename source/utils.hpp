@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <fstream> // test
+#include <mpi.h>
 
 #pragma warning (disable: 26451) /// Fix for VS2019 bug displaying false warnings on integer multiplication
 
@@ -12,10 +13,14 @@ using T = double;
 inline static auto &outstream = std::cout;
 
 // Math
-constexpr T PI = 3.14159265358979323846;
+const T PI = 3.14159265358979323846;
 
 template<typename Type>
 constexpr Type sqr(Type value) { return value * value; } // screw you C++, I want my sqr()
+
+inline static int bitselect(int condition, int truereturnvalue, int falsereturnvalue) {
+	return (truereturnvalue & -condition) | (falsereturnvalue & ~(-condition)); //a when TRUE and b when FALSE
+}
 
 
 // 'Raw' array
@@ -41,5 +46,6 @@ void print_array(T* const arr, size_t size) {
 // Utility
 inline void exit_with_error(const std::string &msg) {
 	outstream << "ERROR: " << msg << "\n";
+	MPI_Finalize();
 	exit(1);
 }
