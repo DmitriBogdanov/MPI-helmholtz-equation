@@ -1,6 +1,6 @@
 #pragma once
 
-#include "communication.hpp"
+#include "utils.hpp"
 
 // ### Helholtz equation ###
 //
@@ -84,25 +84,21 @@ UniquePtrArray helholtz_jacobi_serial(T k, std::function<T(T, T)> f, T L, size_t
 
 	// Tabulate boundaries
 	// Left
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int i = 0; i < N; ++i) {
 		x_ptr[i * N + 0] = boundary_left(i * h);
 		x0_ptr[i * N + 0] = boundary_left(i * h);
 	}
 	// Right
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int i = 0; i < N; ++i) {
 		x_ptr[i * N + N - 1] = boundary_right(i * h);
 		x0_ptr[i * N + N - 1] = boundary_right(i * h);
 	}
 	// Top
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int j = 1; j < N - 1; ++j) {
 		x_ptr[0 * N + j] = boundary_top(j * h);
 		x0_ptr[0 * N + j] = boundary_top(j * h);
 	}
 	// Bottom 
-	//#pragma omp parallel for // No significant difference noticed, seems marginally faster without OMP
 	for (int j = 1; j < N - 1; ++j) {
 		x_ptr[(N - 1) * N + j] = boundary_bot(j * h);
 		x0_ptr[(N - 1) * N + j] = boundary_bot(j * h);

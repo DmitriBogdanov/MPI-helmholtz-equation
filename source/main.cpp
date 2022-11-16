@@ -3,8 +3,12 @@
 
 #include "helmholtz_jacobi_serial.hpp"
 #include "helmholtz_jacobi_mpi.hpp"
+#include "helmholtz_jacobi_mpi_async.hpp"
+
 #include "helmholtz_seidel_serial.hpp"
 #include "helmholtz_seidel_mpi.hpp"
+#include "helmholtz_seidel_mpi_async.hpp"
+
 #include "static_timer.hpp"
 #include "table.hpp"
 
@@ -14,7 +18,7 @@
 const T L = 1;
 
 // Grid size
-const size_t N = 8002;
+const size_t N = 10002;
 const size_t internalN = N - 2;
 
 // Wave number
@@ -182,11 +186,19 @@ int main(int argc, char** argv) {
 		}
 		
 		MPI_Barrier(MPI_COMM_WORLD);
-		auto solution = helholtz_jacobi_mpi(
-			k, right_part, L, N, precision,
-			zero_boundary, zero_boundary, zero_boundary, zero_boundary,
-			MPI_rank, MPI_size, MPI_communication_type
-		);
+		auto solution =
+			(MPI_communication_type < 3)
+			? helholtz_jacobi_mpi(
+				k, right_part, L, N, precision,
+				zero_boundary, zero_boundary, zero_boundary, zero_boundary,
+				MPI_rank, MPI_size, MPI_communication_type
+			)
+			: helholtz_jacobi_mpi_async(
+				k, right_part, L, N, precision,
+				zero_boundary, zero_boundary, zero_boundary, zero_boundary,
+				MPI_rank, MPI_size
+			);
+			
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		if (MPI_rank == 0) {
@@ -240,11 +252,17 @@ int main(int argc, char** argv) {
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
-		auto solution = helholtz_seidel_mpi(
-			k, right_part, L, N, precision,
-			zero_boundary, zero_boundary, zero_boundary, zero_boundary,
-			MPI_rank, MPI_size, MPI_communication_type
-		);
+		auto solution = (MPI_communication_type < 3)
+			? helholtz_seidel_mpi(
+				k, right_part, L, N, precision,
+				zero_boundary, zero_boundary, zero_boundary, zero_boundary,
+				MPI_rank, MPI_size, MPI_communication_type
+			)
+			: helholtz_seidel_mpi_async(
+				k, right_part, L, N, precision,
+				zero_boundary, zero_boundary, zero_boundary, zero_boundary,
+				MPI_rank, MPI_size
+			);
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		if (MPI_rank == 0) {

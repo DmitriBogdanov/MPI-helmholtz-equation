@@ -1,12 +1,21 @@
 #pragma once
 
+/// Fix for VS2019 bug displaying false warnings on integer multiplication
+#pragma warning (disable: 26451)
+
+/// Fix for VS2019 incorrectly assuming that args of some MPI function lie outside the proper range
+#pragma warning (disable: 28020)
+
 #include <memory>
 #include <cmath>
 #include <iostream>
 #include <fstream> // test
+#include <functional>
+
 #include <mpi.h>
 
-#pragma warning (disable: 26451) /// Fix for VS2019 bug displaying false warnings on integer multiplication
+#define MPI_T MPI_DOUBLE
+#define MASTER_PROCESS 0
 
 
 using T = double;

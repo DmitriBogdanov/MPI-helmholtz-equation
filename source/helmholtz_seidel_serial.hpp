@@ -53,6 +53,7 @@
 //   l R B R B R B R B r
 //   l B R B R B R B R r
 //   b b b b b b b b b b
+//
 UniquePtrArray helholtz_seidel_serial(T k, std::function<T(T, T)> f, T L, size_t N, T epsilon,
 	std::function<T(T)> boundary_left, std::function<T(T)> boundary_right,
 	std::function<T(T)> boundary_bot, std::function<T(T)> boundary_top

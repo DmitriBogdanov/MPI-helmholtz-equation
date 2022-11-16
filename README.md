@@ -27,6 +27,10 @@ Adjust grid size $N$, area size $L$, wave number $k$, precision and boundary con
 
 ## Version history
 
+* 01.01
+    * Reworked type 3 communication to utilize its' async nature and compute middle rows during sending of data
+    * Refined comments, removed redundant dublicates
+
 * 01.00
     * Changed table formatting
     * Added more error messages and safeguards
