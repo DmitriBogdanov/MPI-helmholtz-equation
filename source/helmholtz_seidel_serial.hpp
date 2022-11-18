@@ -1,6 +1,7 @@
 #pragma once
 
-#include "communication.hpp"
+#include "utils.hpp"
+
 
 // ### Helholtz equation ###
 //

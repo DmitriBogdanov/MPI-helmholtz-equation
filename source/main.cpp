@@ -18,7 +18,7 @@
 const T L = 1;
 
 // Grid size
-const size_t N = 10002;
+const size_t N = 8002;
 const size_t internalN = N - 2;
 
 // Wave number
